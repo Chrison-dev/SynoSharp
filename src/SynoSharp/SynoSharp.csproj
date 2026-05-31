@@ -7,7 +7,13 @@
     <!-- Independent SemVer. No generated .Api project — Synology has no published
          schema (ADR-0002), so this is a hand-written client. -->
     <VersionPrefix>0.1.0</VersionPrefix>
-    <Description>C# client for Synology DSM — Web-API read/discover + (later) SSH-runner for mutations. See ADR-0002.</Description>
+    <Description>C# client for Synology DSM — Web-API read/discover + SSH-runner for mutations. See ADR-0002.</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Mutation transport (ADR-0002): SSH-exec of on-box syno* / synowebapi.
+         Programmatic connect + sudo-via-stdin; no dependency on a system `ssh`. -->
+    <PackageReference Include="SSH.NET" Version="2025.1.0" />
+  </ItemGroup>
 
 </Project>
