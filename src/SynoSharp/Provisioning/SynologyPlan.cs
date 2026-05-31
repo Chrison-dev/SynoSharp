@@ -6,6 +6,7 @@ namespace SynoSharp.Provisioning;
 public enum ActionKind
 {
     Create,
+    Modify,
     Delete,
     Skip,
 }
@@ -28,6 +29,9 @@ public sealed record PlannedAction
 
     public static PlannedAction Create(string type, string name, SynologyCommand command, string reason)
         => new() { Kind = ActionKind.Create, ResourceType = type, Name = name, Command = command, Reason = reason };
+
+    public static PlannedAction Modify(string type, string name, SynologyCommand command, string reason)
+        => new() { Kind = ActionKind.Modify, ResourceType = type, Name = name, Command = command, Reason = reason };
 
     public static PlannedAction Delete(string type, string name, SynologyCommand command, string reason)
         => new() { Kind = ActionKind.Delete, ResourceType = type, Name = name, Command = command, Reason = reason };
@@ -54,6 +58,7 @@ public sealed record SynologyPlan
             var marker = a.Kind switch
             {
                 ActionKind.Create => "+ create",
+                ActionKind.Modify => "~ modify",
                 ActionKind.Delete => "- delete",
                 _ => "= skip  ",
             };
