@@ -1,0 +1,19 @@
+<Project>
+
+  <!-- Shared build settings for all SynoSharp projects. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Authors>Chrison Simtian</Authors>
+    <Company>Homelab</Company>
+    <RepositoryUrl>https://github.com/chrison-dev/SynoSharp</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/chrison-dev/SynoSharp</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <!-- Embed symbols in the assembly (GitHub Packages doesn't take .snupkg). -->
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+</Project>

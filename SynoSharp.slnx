@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SynoSharp.Cli/SynoSharp.Cli.csproj" />
+    <Project Path="src/SynoSharp/SynoSharp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SynoSharp.Tests/SynoSharp.Tests.csproj" />
+  </Folder>
+</Solution>
