@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Hand-written client (no codegen) — just build + test.
+      - name: Build
+        run: dotnet build -c Release
+
+      # Live DSM integration tests skip automatically without SYNOLOGY_* env.
+      - name: Test
+        run: dotnet test -c Release --no-build
+
+      # On every push to main, publish a PRERELEASE to GitHub Packages so other
+      # projects can reference the latest build (e.g. 0.1.0-preview.42). Stable
+      # versions are published from the publish.yml workflow on a v* tag.
+      - name: Publish prerelease
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          dotnet pack -c Release -o artifacts --version-suffix "preview.${{ github.run_number }}"
+          dotnet nuget push "artifacts/*.nupkg" \
+            --source "https://nuget.pkg.github.com/chrison-dev/index.json" \
+            --api-key "${{ secrets.GITHUB_TOKEN }}" \
+            --skip-duplicate --no-symbols
