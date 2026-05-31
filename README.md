@@ -68,10 +68,14 @@ synosharp apply spec.json              # still a dry-run…
 synosharp apply spec.json --confirm    # …only this mutates
 ```
 
-The reconciler does **existence reconciliation** (create-if-missing /
-delete-if-`present:false` / skip-if-present) and **never prunes** unmanaged
-resources. Share deletes **keep data by default** (DSM shares are btrfs subvolumes);
-set `ShareSpec.DeleteData = true` for a destructive `synoshare --del TRUE`.
-**Next:** field-level drift (desc/ACLs), then NFS exports via
-`synowebapi` — last, highest-risk, prove on Virtual DSM (needs an x86/KVM host).
+The reconciler does **existence + field reconciliation**: create-if-missing /
+delete-if-`present:false` / **modify-on-drift** / skip-if-in-sync, and **never
+prunes** unmanaged resources. Field drift is checked for share/group `Description`
+and user `FullName`/`Email` (read via `--get`/`--descget`, set via
+`--setdesc`/`--descset`/`--modify`); **empty/null spec fields are unmanaged** (never
+clobbered), and `expired` is preserved. Share deletes **keep data by default** (DSM
+shares are btrfs subvolumes); set `ShareSpec.DeleteData = true` for a destructive
+`synoshare --del TRUE`. **Next:** list-valued fields (share ACLs, group membership),
+then NFS exports via `synowebapi` — last, highest-risk, prove on Virtual DSM
+(needs an x86/KVM host).
 See the [write-path plan](https://github.com/chrison-dev/Homelab/blob/main/docs/plans/057-synosharp-write-path.md).

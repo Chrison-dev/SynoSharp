@@ -22,6 +22,10 @@ internal sealed class FakeSshRunner : ISshRunner
             ("synogroup", "--enum local") => "3 Group Listed:\nadministrators\nhttp\nusers\n",
             ("synouser", "--enum local") => "2 User Listed:\nadmin\nhomelab\n",
             ("synoshare", "--enum ALL") => "Share Enum Arguments: [0xFF0F] ALL\n2 Listed:\nVolume-1\nweb\n",
+            // --get / --descget for drift (canned "current" state)
+            ("synoshare", "--get Volume-1") => "\t Name .......[Volume-1]\n\t Comment ....[old desc]\n\t Path .......[/volume1/Volume-1]\n",
+            ("synouser", "--get homelab") => "User Name   : [homelab]\nFullname    : [Old Name]\nExpired     : [false]\nUser Mail   : [old@x.test]\n",
+            ("synogroup", "--descget users") => "users:[old group desc]\n",
             _ => "",
         };
         return Task.FromResult(new SshCommandResult(0, stdout, ""));
@@ -71,6 +75,83 @@ public class ReconcilerTests
         var delete = Assert.Single(plan.Mutations);
         Assert.Equal(ActionKind.Delete, delete.Kind);
         Assert.Equal("synogroup --del http", delete.Command!.Render());
+    }
+
+    [Fact]
+    public async Task Plan_share_description_drift_emits_setdesc()
+    {
+        var reconciler = ReconcilerWith(out _);
+        var desired = new SynologyDesiredState
+        {
+            Shares = [new ShareSpec { Name = "Volume-1", Path = "/volume1/Volume-1", Description = "new desc" }],
+        };
+
+        var plan = await reconciler.PlanAsync(desired);
+
+        var modify = Assert.Single(plan.Mutations);
+        Assert.Equal(ActionKind.Modify, modify.Kind);
+        Assert.Equal("synoshare --setdesc Volume-1 'new desc'", modify.Command!.Render());
+    }
+
+    [Fact]
+    public async Task Plan_no_drift_when_description_matches()
+    {
+        var reconciler = ReconcilerWith(out _);
+        var desired = new SynologyDesiredState
+        {
+            Shares = [new ShareSpec { Name = "Volume-1", Path = "/volume1/Volume-1", Description = "old desc" }],
+        };
+
+        var plan = await reconciler.PlanAsync(desired);
+
+        Assert.False(plan.HasChanges);
+        Assert.Equal("in sync", Assert.Single(plan.Actions).Reason);
+    }
+
+    [Fact]
+    public async Task Plan_empty_description_is_unmanaged()
+    {
+        var reconciler = ReconcilerWith(out _);
+        var desired = new SynologyDesiredState
+        {
+            Shares = [new ShareSpec { Name = "Volume-1", Path = "/volume1/Volume-1" }], // no Description
+        };
+
+        var plan = await reconciler.PlanAsync(desired);
+
+        Assert.False(plan.HasChanges); // current "old desc" left untouched
+    }
+
+    [Fact]
+    public async Task Plan_user_fullname_drift_emits_modify_preserving_email()
+    {
+        var reconciler = ReconcilerWith(out _);
+        var desired = new SynologyDesiredState
+        {
+            Users = [new UserSpec { Name = "homelab", FullName = "New Name" }], // email unset → preserve current
+        };
+
+        var plan = await reconciler.PlanAsync(desired);
+
+        var modify = Assert.Single(plan.Mutations);
+        Assert.Equal(ActionKind.Modify, modify.Kind);
+        // expired preserved (0), email preserved (quoted — '@' isn't a bare-word char), fullname updated.
+        Assert.Equal("synouser --modify homelab 'New Name' 0 'old@x.test'", modify.Command!.Render());
+    }
+
+    [Fact]
+    public async Task Plan_group_description_drift_emits_descset()
+    {
+        var reconciler = ReconcilerWith(out _);
+        var desired = new SynologyDesiredState
+        {
+            Groups = [new GroupSpec { Name = "users", Description = "new group desc" }],
+        };
+
+        var plan = await reconciler.PlanAsync(desired);
+
+        var modify = Assert.Single(plan.Mutations);
+        Assert.Equal("synogroup --descset users 'new group desc'", modify.Command!.Render());
     }
 
     [Fact]

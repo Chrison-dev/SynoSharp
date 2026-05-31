@@ -47,15 +47,15 @@ public sealed class SynologyReconciler
         var actions = new List<PlannedAction>();
         foreach (var g in desired.Groups)
         {
-            actions.Add(PlanGroup(g, Contains(existingGroups, g.Name)));
+            actions.Add(await PlanGroupAsync(g, Contains(existingGroups, g.Name), cancellationToken).ConfigureAwait(false));
         }
         foreach (var u in desired.Users)
         {
-            actions.Add(PlanUser(u, Contains(existingUsers, u.Name)));
+            actions.Add(await PlanUserAsync(u, Contains(existingUsers, u.Name), cancellationToken).ConfigureAwait(false));
         }
         foreach (var s in desired.Shares)
         {
-            actions.Add(PlanShare(s, Contains(existingShares, s.Name)));
+            actions.Add(await PlanShareAsync(s, Contains(existingShares, s.Name), cancellationToken).ConfigureAwait(false));
         }
 
         return new SynologyPlan { Actions = actions };
@@ -95,7 +95,10 @@ public sealed class SynologyReconciler
     private static bool Contains(IReadOnlyList<string> names, string name)
         => names.Contains(name, StringComparer.OrdinalIgnoreCase);
 
-    private static PlannedAction PlanGroup(GroupSpec g, bool exists)
+    private static bool Differs(string current, string desired)
+        => !string.Equals(current, desired, StringComparison.Ordinal);
+
+    private async Task<PlannedAction> PlanGroupAsync(GroupSpec g, bool exists, CancellationToken ct)
     {
         if (g.Present && !exists)
         {
@@ -105,10 +108,25 @@ public sealed class SynologyReconciler
         {
             return PlannedAction.Delete("group", g.Name, SynoGroupTool.DeleteCommand(g.Name), "present → delete");
         }
-        return PlannedAction.Skip("group", g.Name, g.Present ? "already present" : "already absent");
+        if (!g.Present)
+        {
+            return PlannedAction.Skip("group", g.Name, "already absent");
+        }
+
+        // Present + exists → field drift. Empty Description = unmanaged (don't clobber).
+        if (!string.IsNullOrEmpty(g.Description))
+        {
+            var current = await _groups.GetDescriptionAsync(g.Name, ct).ConfigureAwait(false);
+            if (current is not null && Differs(current, g.Description))
+            {
+                return PlannedAction.Modify("group", g.Name, SynoGroupTool.SetDescriptionCommand(g.Name, g.Description),
+                    $"desc '{current}' → '{g.Description}'");
+            }
+        }
+        return PlannedAction.Skip("group", g.Name, "in sync");
     }
 
-    private static PlannedAction PlanUser(UserSpec u, bool exists)
+    private async Task<PlannedAction> PlanUserAsync(UserSpec u, bool exists, CancellationToken ct)
     {
         if (u.Present && !exists)
         {
@@ -122,10 +140,29 @@ public sealed class SynologyReconciler
         {
             return PlannedAction.Delete("user", u.Name, SynoUserTool.DeleteCommand(u.Name), "present → delete");
         }
-        return PlannedAction.Skip("user", u.Name, u.Present ? "already present" : "already absent");
+        if (!u.Present)
+        {
+            return PlannedAction.Skip("user", u.Name, "already absent");
+        }
+
+        // Present + exists → field drift on FullName / Email (empty/null = unmanaged).
+        var current = await _users.GetAsync(u.Name, ct).ConfigureAwait(false);
+        if (current is not null)
+        {
+            var fullNameDrift = !string.IsNullOrEmpty(u.FullName) && Differs(current.FullName, u.FullName);
+            var emailDrift = u.Email is not null && Differs(current.Email, u.Email);
+            if (fullNameDrift || emailDrift)
+            {
+                var reasons = new List<string>();
+                if (fullNameDrift) reasons.Add($"name '{current.FullName}' → '{u.FullName}'");
+                if (emailDrift) reasons.Add($"mail '{current.Email}' → '{u.Email}'");
+                return PlannedAction.Modify("user", u.Name, SynoUserTool.ModifyCommand(u, current), string.Join(", ", reasons));
+            }
+        }
+        return PlannedAction.Skip("user", u.Name, "in sync");
     }
 
-    private static PlannedAction PlanShare(ShareSpec s, bool exists)
+    private async Task<PlannedAction> PlanShareAsync(ShareSpec s, bool exists, CancellationToken ct)
     {
         if (s.Present && !exists)
         {
@@ -136,6 +173,21 @@ public sealed class SynologyReconciler
             var reason = s.DeleteData ? "present → delete (incl. data)" : "present → delete (keep data)";
             return PlannedAction.Delete("share", s.Name, SynoShareTool.DeleteCommand(s.Name, s.DeleteData), reason);
         }
-        return PlannedAction.Skip("share", s.Name, s.Present ? "already present" : "already absent");
+        if (!s.Present)
+        {
+            return PlannedAction.Skip("share", s.Name, "already absent");
+        }
+
+        // Present + exists → field drift on Description (empty = unmanaged).
+        if (!string.IsNullOrEmpty(s.Description))
+        {
+            var current = await _shares.GetAsync(s.Name, ct).ConfigureAwait(false);
+            if (current is not null && Differs(current.Description, s.Description))
+            {
+                return PlannedAction.Modify("share", s.Name, SynoShareTool.SetDescriptionCommand(s.Name, s.Description),
+                    $"desc '{current.Description}' → '{s.Description}'");
+            }
+        }
+        return PlannedAction.Skip("share", s.Name, "in sync");
     }
 }
