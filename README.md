@@ -18,9 +18,9 @@ this is a hand-written **read-API client** (now) + an **SSH-runner** for mutatio
 
 | Project | What |
 | --- | --- |
-| `src/SynoSharp/` | The client — `SynologyApiClient` (Web-API read), `SynologyDiscovery` → `SynologySnapshot`, and `Ssh/` (the SSH-runner: `ISshRunner`/`SshRunner`, `SynologyCommand`). SemVer. |
-| `src/SynoSharp.Cli/` | `synosharp` dotnet tool — `discover`, `ssh-check`. |
-| `tests/SynoSharp.Tests/` | Unit + skippable live tests (Web-API + SSH). |
+| `src/SynoSharp/` | The client — `SynologyApiClient` (Web-API read), `SynologyDiscovery` → `SynologySnapshot`, `Ssh/` (the SSH-runner), `Tools/` (typed `synoshare`/`synouser`/`synogroup` wrappers), `Provisioning/` (specs + reconciler). SemVer. |
+| `src/SynoSharp.Cli/` | `synosharp` dotnet tool — `discover`, `ssh-check`, `plan`, `apply`. |
+| `tests/SynoSharp.Tests/` | Unit (quoting + reconciler) + skippable live tests (Web-API + SSH). |
 
 ## Build / use
 
@@ -54,6 +54,22 @@ proves the full stack end-to-end (SSH login → sudo-to-root → on-box `syno*`)
 (`ISshRunner`/`SshRunner` over SSH.NET) + structured `SynologyCommand` (shell-quoted
 argv) are the transport for the write path.
 
-**Next:** the first typed mutation — `EnsureShareAsync` with **read-before-write**
-(diff the discover snapshot, emit only the needed command) and **dry-run by default**.
-NFS exports come last (highest-risk; prove on Virtual DSM, not the live box).
+**Write path (Phase A) — reconciler for shares/users/groups, dry-run by default.**
+Desired-state specs (`ShareSpec`/`UserSpec`/`GroupSpec`) are diffed against live
+state by `SynologyReconciler` → a `SynologyPlan` of create/delete/skip actions; each
+carries the exact `synoshare`/`synouser`/`synogroup` command. `ApplyAsync(apply:false)`
+is a dry-run (the default). **Verified against the live NAS (2026-05-31):** `plan`
+correctly skipped existing resources, planned creates for new ones, and blocked a
+passwordless user create — **zero mutation** (reads only).
+
+```bash
+synosharp plan  spec.json              # diff vs live → dry-run plan (read-only)
+synosharp apply spec.json              # still a dry-run…
+synosharp apply spec.json --confirm    # …only this mutates
+```
+
+The reconciler does **existence reconciliation** (create-if-missing /
+delete-if-`present:false` / skip-if-present) and **never prunes** unmanaged
+resources. **Next:** field-level drift (desc/ACLs), then NFS exports via
+`synowebapi` — last, highest-risk, prove on Virtual DSM (needs an x86/KVM host).
+See the [write-path plan](https://github.com/chrison-dev/Homelab/blob/main/docs/plans/057-synosharp-write-path.md).
