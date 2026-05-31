@@ -1,12 +1,18 @@
 using System.Text.Json;
 using SynoSharp;
+using SynoSharp.Provisioning;
 using SynoSharp.Ssh;
 
 // synosharp — a thin CLI over the SynoSharp library.
 //
-// Commands: discover (Web-API read), ssh-check (prove the SSH-runner transport)
-// Config (env): SYNOLOGY_BASE_URL (e.g. https://nas:5001), SYNOLOGY_USER,
-//               SYNOLOGY_PASSWORD, SYNOLOGY_VERIFY_TLS (optional, 'false'),
+// Commands:
+//   discover               Web-API read → SynologySnapshot (JSON)
+//   ssh-check              prove the SSH-runner transport (login + sudo + read)
+//   plan  <spec.json>      diff a desired-state spec vs live → dry-run plan
+//   apply <spec.json> [--confirm]   apply the plan (dry-run unless --confirm)
+//
+// Config (env): SYNOLOGY_BASE_URL, SYNOLOGY_USER, SYNOLOGY_PASSWORD,
+//               SYNOLOGY_VERIFY_TLS (optional 'false'),
 //               SYNOLOGY_SSH_HOST/PORT/KEY (optional; host falls back to BASE_URL)
 
 var command = args.Length > 0 ? args[0].ToLowerInvariant() : "help";
@@ -18,17 +24,20 @@ if (command is "help" or "-h" or "--help")
         synosharp — Synology DSM client
 
         Usage: synosharp <command>
-          discover    Dump a SynologySnapshot (DSM version, shares, users) as JSON
-          ssh-check   Prove the SSH-runner: SSH login + sudo-to-root + a read-only syno* read
+          discover               Dump a SynologySnapshot (DSM version, shares, users) as JSON
+          ssh-check              Prove the SSH-runner: login + sudo-to-root + read-only syno* read
+          plan  <spec.json>      Diff a desired-state spec against the live box (dry-run)
+          apply <spec.json>      Apply the plan — dry-run unless --confirm is given
+                    [--confirm]
 
-        Config (env): SYNOLOGY_BASE_URL (e.g. https://nas:5001), SYNOLOGY_USER,
-                      SYNOLOGY_PASSWORD, SYNOLOGY_VERIFY_TLS (optional, 'false'),
+        Config (env): SYNOLOGY_BASE_URL, SYNOLOGY_USER, SYNOLOGY_PASSWORD,
+                      SYNOLOGY_VERIFY_TLS (optional 'false'),
                       SYNOLOGY_SSH_HOST/PORT/KEY (optional; host falls back to BASE_URL)
         """);
     return 0;
 }
 
-if (command == "ssh-check")
+if (command is "ssh-check" or "plan" or "apply")
 {
     var sshOptions = SynologySshOptions.TryFromEnvironment();
     if (sshOptions is null)
@@ -39,24 +48,68 @@ if (command == "ssh-check")
 
     using var runner = new SshRunner(sshOptions);
 
-    // 1. Transport, no root — proves SSH login works.
-    var id = await runner.RunAsync(new SynologyCommand { Executable = "id", RequiresRoot = false });
-    Console.WriteLine($"id            → exit {id.ExitCode}: {id.StandardOutput.Trim()}");
-
-    // 2. sudo-to-root + a real read-only syno* read — proves the full risky stack
-    //    (sudo via stdin → root → on-box CLI) with ZERO mutation.
-    var shares = await runner.RunAsync(SynologyCommand.Create("synoshare", "--enum", "ALL"));
-    Console.WriteLine($"synoshare ALL → exit {shares.ExitCode}");
-    if (!string.IsNullOrWhiteSpace(shares.StandardOutput))
+    if (command == "ssh-check")
     {
-        Console.WriteLine(shares.StandardOutput.TrimEnd());
-    }
-    if (!string.IsNullOrWhiteSpace(shares.StandardError))
-    {
-        Console.Error.WriteLine(shares.StandardError.TrimEnd());
+        // 1. Transport, no root — proves SSH login works.
+        var id = await runner.RunAsync(new SynologyCommand { Executable = "id", RequiresRoot = false });
+        Console.WriteLine($"id            → exit {id.ExitCode}: {id.StandardOutput.Trim()}");
+
+        // 2. sudo-to-root + a real read-only syno* read — the full risky stack, ZERO mutation.
+        var shares = await runner.RunAsync(SynologyCommand.Create("synoshare", "--enum", "ALL"));
+        Console.WriteLine($"synoshare ALL → exit {shares.ExitCode}");
+        if (!string.IsNullOrWhiteSpace(shares.StandardOutput))
+        {
+            Console.WriteLine(shares.StandardOutput.TrimEnd());
+        }
+        return id.Success && shares.Success ? 0 : 1;
     }
 
-    return id.Success && shares.Success ? 0 : 1;
+    // plan / apply
+    if (args.Length < 2)
+    {
+        Console.Error.WriteLine($"Usage: synosharp {command} <spec.json>{(command == "apply" ? " [--confirm]" : "")}");
+        return 2;
+    }
+
+    var specPath = args[1];
+    if (!File.Exists(specPath))
+    {
+        Console.Error.WriteLine($"Spec file not found: {specPath}");
+        return 2;
+    }
+
+    var desired = JsonSerializer.Deserialize<SynologyDesiredState>(
+        await File.ReadAllTextAsync(specPath),
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    if (desired is null)
+    {
+        Console.Error.WriteLine("Spec file did not parse to a desired state.");
+        return 2;
+    }
+
+    var reconciler = new SynologyReconciler(runner);
+    var plan = await reconciler.PlanAsync(desired);
+    Console.WriteLine(plan.Render());
+
+    if (command == "plan")
+    {
+        return 0;
+    }
+
+    var confirm = args.Contains("--confirm");
+    if (!confirm)
+    {
+        Console.WriteLine("\n(dry-run — pass --confirm to apply)");
+        return 0;
+    }
+
+    Console.WriteLine($"\nApplying {plan.Mutations.Count()} change(s)…");
+    var result = await reconciler.ApplyAsync(plan, apply: true);
+    foreach (var outcome in result.Outcomes.Where(o => o.Action.Kind != ActionKind.Skip))
+    {
+        Console.WriteLine($"  {outcome.Action.ResourceType} {outcome.Action.Name}: {outcome.Message}");
+    }
+    return result.AllSucceeded ? 0 : 1;
 }
 
 var options = SynologyOptions.TryFromEnvironment();
@@ -80,6 +133,6 @@ switch (command)
         return 0;
 
     default:
-        Console.Error.WriteLine($"Unknown command '{command}'. Try: discover, ssh-check");
+        Console.Error.WriteLine($"Unknown command '{command}'. Try: discover, ssh-check, plan, apply");
         return 1;
 }
