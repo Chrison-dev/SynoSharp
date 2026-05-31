@@ -74,6 +74,38 @@ public class ReconcilerTests
     }
 
     [Fact]
+    public async Task Plan_share_delete_keeps_data_by_default()
+    {
+        var reconciler = ReconcilerWith(out _);
+        var desired = new SynologyDesiredState
+        {
+            Shares = [new ShareSpec { Name = "Volume-1", Path = "/volume1/Volume-1", Present = false }],
+        };
+
+        var plan = await reconciler.PlanAsync(desired);
+
+        var delete = Assert.Single(plan.Mutations);
+        Assert.Equal("synoshare --del FALSE Volume-1", delete.Command!.Render());
+        Assert.Contains("keep data", delete.Reason);
+    }
+
+    [Fact]
+    public async Task Plan_share_delete_with_DeleteData_removes_data()
+    {
+        var reconciler = ReconcilerWith(out _);
+        var desired = new SynologyDesiredState
+        {
+            Shares = [new ShareSpec { Name = "Volume-1", Path = "/volume1/Volume-1", Present = false, DeleteData = true }],
+        };
+
+        var plan = await reconciler.PlanAsync(desired);
+
+        var delete = Assert.Single(plan.Mutations);
+        Assert.Equal("synoshare --del TRUE Volume-1", delete.Command!.Render());
+        Assert.Contains("incl. data", delete.Reason);
+    }
+
+    [Fact]
     public async Task Plan_blocks_user_create_without_password()
     {
         var reconciler = ReconcilerWith(out _);
