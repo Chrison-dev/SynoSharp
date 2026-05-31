@@ -133,7 +133,8 @@ public sealed class SynologyReconciler
         }
         if (!s.Present && exists)
         {
-            return PlannedAction.Delete("share", s.Name, SynoShareTool.DeleteCommand(s.Name), "present → delete");
+            var reason = s.DeleteData ? "present → delete (incl. data)" : "present → delete (keep data)";
+            return PlannedAction.Delete("share", s.Name, SynoShareTool.DeleteCommand(s.Name, s.DeleteData), reason);
         }
         return PlannedAction.Skip("share", s.Name, s.Present ? "already present" : "already absent");
     }

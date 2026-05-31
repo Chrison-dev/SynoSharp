@@ -70,6 +70,8 @@ synosharp apply spec.json --confirm    # …only this mutates
 
 The reconciler does **existence reconciliation** (create-if-missing /
 delete-if-`present:false` / skip-if-present) and **never prunes** unmanaged
-resources. **Next:** field-level drift (desc/ACLs), then NFS exports via
+resources. Share deletes **keep data by default** (DSM shares are btrfs subvolumes);
+set `ShareSpec.DeleteData = true` for a destructive `synoshare --del TRUE`.
+**Next:** field-level drift (desc/ACLs), then NFS exports via
 `synowebapi` — last, highest-risk, prove on Virtual DSM (needs an x86/KVM host).
 See the [write-path plan](https://github.com/chrison-dev/Homelab/blob/main/docs/plans/057-synosharp-write-path.md).

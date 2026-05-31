@@ -10,6 +10,14 @@ public sealed record ShareSpec
     public required string Path { get; init; }
 
     public bool Present { get; init; } = true;
+
+    /// <summary>
+    /// When deleting (<see cref="Present"/> false), also remove the share's data.
+    /// DSM shares are btrfs subvolumes, so the default keep-data delete leaves the
+    /// subvolume behind (plain <c>rm</c> can't remove it) — set true for a full
+    /// <c>synoshare --del TRUE</c>. <b>Destructive; off by default.</b>
+    /// </summary>
+    public bool DeleteData { get; init; }
 }
 
 /// <summary>Desired state for a local user. <see cref="Present"/> false = ensure absent.</summary>
