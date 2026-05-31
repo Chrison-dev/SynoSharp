@@ -27,7 +27,7 @@ this is a hand-written **read-API client** (now) + an **SSH-runner** for mutatio
 ```bash
 dotnet build && dotnet test
 export SYNOLOGY_BASE_URL=https://nas:5001 SYNOLOGY_USER=… SYNOLOGY_PASSWORD=… SYNOLOGY_VERIFY_TLS=false
-synosharp discover     # JSON snapshot: DSM version, shares, users
+synosharp discover     # JSON snapshot: model, serial, DSM version, shares, users
 ```
 
 Packages publish to GitHub Packages (chrison-dev) like the siblings: prerelease
@@ -35,8 +35,8 @@ on push to `main`, stable on `v*` tag.
 
 ## Status
 
-**Read/discover scaffold — UNVERIFIED.** The Virtual DSM test container needs
-KVM/x86 so it can't run on Apple Silicon; the discover path is wired but must be
-verified against a DSM target (a Linux-hosted Virtual DSM, or the live NAS
-read-only). The `SYNO.Core.*` reads are defensive (degrade to empty on shape
-mismatch). **Next:** verify discover, then the SSH-runner for the write path.
+**Read/discover — verified against the live NAS (2026-05-31, DS1813+ / DSM
+7.1.1-42962).** `discover` returns model, serial, DSM version, share names and
+user names (`SYNO.Core.System` / `Share` / `User`). The `SYNO.Core.*` reads are
+defensive (degrade to empty on shape mismatch). **Next:** the SSH-runner for the
+write path (shares/NFS/users via on-box `syno*` + `synowebapi`).

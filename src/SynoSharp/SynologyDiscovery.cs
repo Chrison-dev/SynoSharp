@@ -28,20 +28,18 @@ public sealed class SynologyDiscovery
         var users = await SafeListNamesAsync("SYNO.Core.User", 1, "list", "users", cancellationToken).ConfigureAwait(false);
 
         string? version = null;
-        string? hostname = null;
+        string? model = null;
+        string? serial = null;
         try
         {
+            // SYNO.Core.System info exposes firmware_ver / model / serial (verified
+            // against DSM 7.1.1 — there is no hostname field here).
             var info = await _client.GetAsync("SYNO.Core.System", 1, "info", cancellationToken: cancellationToken).ConfigureAwait(false);
             if (info.ValueKind == JsonValueKind.Object)
             {
-                if (info.TryGetProperty("firmware_ver", out var fv))
-                {
-                    version = fv.GetString();
-                }
-                if (info.TryGetProperty("hostname", out var hn))
-                {
-                    hostname = hn.GetString();
-                }
+                version = GetString(info, "firmware_ver");
+                model = GetString(info, "model");
+                serial = GetString(info, "serial");
             }
         }
         catch
@@ -51,12 +49,16 @@ public sealed class SynologyDiscovery
 
         return new SynologySnapshot
         {
+            Model = model,
+            Serial = serial,
             DsmVersion = version,
-            Hostname = hostname,
             Shares = shares,
             Users = users,
         };
     }
+
+    private static string? GetString(JsonElement obj, string name)
+        => obj.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
 
     private async Task<IReadOnlyList<string>> SafeListNamesAsync(
         string api, int version, string method, string arrayProperty, CancellationToken cancellationToken)
