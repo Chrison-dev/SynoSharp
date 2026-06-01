@@ -34,4 +34,12 @@ public sealed record SynologyOptions
 
         return new SynologyOptions { BaseUrl = new Uri(baseUrl), Username = user, Password = pass, VerifyTls = verifyTls };
     }
+
+    /// <summary>
+    /// Redacted representation. The synthesized record <c>ToString()</c> would
+    /// otherwise print <see cref="Password"/>, leaking it into any log or
+    /// interpolated string. The password is never emitted.
+    /// </summary>
+    public override string ToString() =>
+        $"SynologyOptions {{ BaseUrl = {BaseUrl}, Username = {Username}, Password = ***, VerifyTls = {VerifyTls} }}";
 }

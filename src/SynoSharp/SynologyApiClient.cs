@@ -47,14 +47,33 @@ public sealed class SynologyApiClient : IDisposable
             : new Uri(options.BaseUrl.AbsoluteUri + "/");
     }
 
-    /// <summary>Authenticate (<c>SYNO.API.Auth</c>) and cache the session id.</summary>
+    /// <summary>
+    /// Authenticate (<c>SYNO.API.Auth</c>) and cache the session id.
+    /// <para>
+    /// Credentials are sent as a <b>POST form body</b>, not in the query string,
+    /// so the account and password never land in DSM access logs, proxy logs, or
+    /// <c>HttpClient</c> request-URI logging. DSM 7.x accepts the auth parameters
+    /// as form fields on <c>auth.cgi</c>.
+    /// </para>
+    /// </summary>
     public async Task LoginAsync(CancellationToken cancellationToken = default)
     {
-        var query = $"webapi/auth.cgi?api=SYNO.API.Auth&version=3&method=login" +
-            $"&account={Uri.EscapeDataString(_options.Username)}" +
-            $"&passwd={Uri.EscapeDataString(_options.Password)}&session=DSM&format=sid";
+        using var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["api"] = "SYNO.API.Auth",
+            ["version"] = "3",
+            ["method"] = "login",
+            ["account"] = _options.Username,
+            ["passwd"] = _options.Password,
+            ["session"] = "DSM",
+            ["format"] = "sid",
+        });
 
-        var envelope = await _http.GetFromJsonAsync<JsonElement>(query, cancellationToken).ConfigureAwait(false);
+        using var response = await _http.PostAsync("webapi/auth.cgi", form, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        var envelope = await response.Content
+            .ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
         if (!envelope.TryGetProperty("success", out var ok) || !ok.GetBoolean())
         {
             throw new InvalidOperationException("Synology login failed (SYNO.API.Auth).");
