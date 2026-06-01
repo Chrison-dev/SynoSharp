@@ -60,4 +60,14 @@ public sealed record SynologySshOptions
             PrivateKeyPath = Environment.GetEnvironmentVariable("SYNOLOGY_SSH_KEY"),
         };
     }
+
+    /// <summary>
+    /// Redacted representation. The synthesized record <c>ToString()</c> would
+    /// otherwise print <see cref="Password"/> (the login + sudo password),
+    /// leaking it into any log or interpolated string. The password is never emitted.
+    /// </summary>
+    public override string ToString() =>
+        $"SynologySshOptions {{ Host = {Host}, Port = {Port}, Username = {Username}, " +
+        $"Password = {(Password is null ? "null" : "***")}, PrivateKeyPath = {PrivateKeyPath}, " +
+        $"AcceptAnyHostKey = {AcceptAnyHostKey} }}";
 }

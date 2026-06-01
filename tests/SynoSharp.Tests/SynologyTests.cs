@@ -16,6 +16,22 @@ public class SynologyOptionsTests
 
         Assert.True(options.VerifyTls);
     }
+
+    [Fact]
+    public void ToString_does_not_leak_the_password()
+    {
+        var options = new SynologyOptions
+        {
+            BaseUrl = new Uri("https://nas:5001"),
+            Username = "u",
+            Password = "super-secret-password",
+        };
+
+        var text = options.ToString();
+
+        Assert.DoesNotContain("super-secret-password", text);
+        Assert.Contains("***", text);
+    }
 }
 
 /// <summary>
