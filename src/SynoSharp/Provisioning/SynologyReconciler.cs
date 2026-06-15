@@ -24,6 +24,7 @@ public sealed class SynologyReconciler
     private readonly SynoShareTool _shares;
     private readonly SynoUserTool _users;
     private readonly SynoGroupTool _groups;
+    private readonly SynoNfsTool _nfs;
 
     public SynologyReconciler(ISshRunner runner)
     {
@@ -32,6 +33,7 @@ public sealed class SynologyReconciler
         _shares = new SynoShareTool(runner);
         _users = new SynoUserTool(runner);
         _groups = new SynoGroupTool(runner);
+        _nfs = new SynoNfsTool(runner);
     }
 
     /// <summary>Read live state, diff against <paramref name="desired"/>, and return the plan.</summary>
@@ -56,6 +58,11 @@ public sealed class SynologyReconciler
         foreach (var s in desired.Shares)
         {
             actions.Add(await PlanShareAsync(s, Contains(existingShares, s.Name), cancellationToken).ConfigureAwait(false));
+        }
+        // NFS exports last — they depend on the share existing (read-before-write per share).
+        foreach (var x in desired.NfsExports)
+        {
+            actions.Add(await PlanNfsAsync(x, cancellationToken).ConfigureAwait(false));
         }
 
         return new SynologyPlan { Actions = actions };
@@ -190,4 +197,42 @@ public sealed class SynologyReconciler
         }
         return PlannedAction.Skip("share", s.Name, "in sync");
     }
+
+    private async Task<PlannedAction> PlanNfsAsync(NfsExportSpec x, CancellationToken ct)
+    {
+        IReadOnlyList<NfsRuleSpec> current;
+        try
+        {
+            current = await _nfs.LoadAsync(x.Share, ct).ConfigureAwait(false);
+        }
+        catch (SynologyToolException)
+        {
+            // Don't abort the whole plan — surface it as a blocked skip (share missing / NFS off).
+            return PlannedAction.Skip("nfs-export", x.Share, "BLOCKED: cannot read NFS rules (share exists + NFS enabled?)");
+        }
+
+        var desired = x.Present ? x.Rules : [];
+        if (RulesEqual(current, desired))
+        {
+            return PlannedAction.Skip("nfs-export", x.Share, x.Present ? "in sync" : "already empty");
+        }
+
+        // DSM `save` is a whole-list replace; Present=false → replace with an empty set (clear).
+        var cmd = SynoNfsTool.SaveCommand(x.Present ? x : x with { Rules = [] });
+        if (current.Count == 0)
+        {
+            return PlannedAction.Create("nfs-export", x.Share, cmd, $"absent → set {desired.Count} rule(s)");
+        }
+        if (desired.Count == 0)
+        {
+            return PlannedAction.Delete("nfs-export", x.Share, cmd, $"{current.Count} rule(s) → clear");
+        }
+        return PlannedAction.Modify("nfs-export", x.Share, cmd, $"{current.Count} → {desired.Count} rule(s)");
+    }
+
+    // Order-insensitive value comparison (NfsRuleSpec is a record → structural equality).
+    private static bool RulesEqual(IReadOnlyList<NfsRuleSpec> a, IReadOnlyList<NfsRuleSpec> b)
+        => a.Count == b.Count
+        && a.OrderBy(r => r.Client, StringComparer.Ordinal)
+            .SequenceEqual(b.OrderBy(r => r.Client, StringComparer.Ordinal));
 }
