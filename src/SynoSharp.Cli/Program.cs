@@ -37,7 +37,7 @@ if (command is "help" or "-h" or "--help")
     return 0;
 }
 
-if (command is "ssh-check" or "plan" or "apply")
+if (command is "ssh-check" or "plan" or "apply" or "exec")
 {
     var sshOptions = SynologySshOptions.TryFromEnvironment();
     if (sshOptions is null)
@@ -62,6 +62,21 @@ if (command is "ssh-check" or "plan" or "apply")
             Console.WriteLine(shares.StandardOutput.TrimEnd());
         }
         return id.Success && shares.Success ? 0 : 1;
+    }
+
+    // exec — raw passthrough over the SSH-runner (sudo-to-root), for probing/diagnostics.
+    if (command == "exec")
+    {
+        if (args.Length < 2)
+        {
+            Console.Error.WriteLine("Usage: synosharp exec <executable> [args...]");
+            return 2;
+        }
+        var res = await runner.RunAsync(SynologyCommand.Create(args[1], args.Skip(2).ToArray()));
+        Console.WriteLine($"exit {res.ExitCode}");
+        if (!string.IsNullOrWhiteSpace(res.StandardOutput)) { Console.WriteLine("--- stdout ---"); Console.WriteLine(res.StandardOutput.TrimEnd()); }
+        if (!string.IsNullOrWhiteSpace(res.StandardError)) { Console.WriteLine("--- stderr ---"); Console.WriteLine(res.StandardError.TrimEnd()); }
+        return res.Success ? 0 : 1;
     }
 
     // plan / apply
