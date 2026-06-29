@@ -1,0 +1,9 @@
+<Project>
+  <!-- Auto-install the Husky.NET git hooks (.husky) on local build so the pre-push
+       guard is always active. Skipped in CI; never fails the build.
+       Manual equivalent: dotnet tool restore && dotnet husky install -->
+  <Target Name="HuskyInstall" BeforeTargets="Build" Condition="'$(CI)' != 'true' And '$(HUSKY)' != '0'">
+    <Exec Command="dotnet tool restore" WorkingDirectory="$(MSBuildThisFileDirectory)" ContinueOnError="true" StandardOutputImportance="Low" StandardErrorImportance="High" />
+    <Exec Command="dotnet husky install" WorkingDirectory="$(MSBuildThisFileDirectory)" ContinueOnError="true" StandardOutputImportance="Low" StandardErrorImportance="High" />
+  </Target>
+</Project>
