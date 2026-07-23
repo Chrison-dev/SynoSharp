@@ -7,6 +7,10 @@
     <!-- Independent SemVer. No generated .Api project — Synology has no published
          schema (ADR-0002), so this is a hand-written client. -->
     <VersionPrefix>0.1.0</VersionPrefix>
+    <!-- Public nuget.org ID uses the reserved Chrison.* prefix (consistent with the
+         sibling clients). AssemblyName/RootNamespace stay 'SynoSharp' (project name)
+         so consumer code — `using SynoSharp;` — is unchanged. -->
+    <PackageId>Chrison.SynoSharp</PackageId>
     <Description>C# client for Synology DSM — Web-API read/discover + SSH-runner for mutations. See ADR-0002.</Description>
   </PropertyGroup>
 

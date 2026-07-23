@@ -1,21 +1,33 @@
 name: publish
 
-# Publishes both packages to GitHub Packages:
-#   SynoSharp.Api  (version = Synology client (no API-version tracking))
-#   SynoSharp      (independent SemVer, e.g. 0.1.0)
-# Versions come from the csprojs; a `v*` tag (the library release) just triggers it.
+# Publishes the two packages to nuget.org via Trusted Publishing (OIDC — no
+# stored API key):
+#   Chrison.SynoSharp      (independent SemVer, e.g. 0.1.0)
+#   Chrison.SynoSharp.Cli  (dotnet tool; co-versioned with the library)
+# Stable versions come from the csprojs' VersionPrefix; a `v*` tag just triggers a
+# stable publish. A push to main publishes a PRERELEASE (…-preview.N).
+#
+# Requires a nuget.org Trusted Publishing policy for this repo + this workflow file
+# (publish.yml) with Environment=Nuget.org, and the NUGET_USER secret (nuget.org
+# profile name). GITHUB_PACKAGES_PAT (from PACKAGES_PAT) only authenticates the
+# Fallout-build feed for the build/ project.
 on:
   push:
+    branches: [main]
     tags: ['v*']
   workflow_dispatch:
 
 permissions:
+  id-token: write   # enable GitHub OIDC token issuance (Trusted Publishing)
   contents: read
-  packages: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Must match the nuget.org Trusted Publishing policy's Environment field — the
+    # OIDC token only carries the environment claim when the job declares it here,
+    # and the policy rejects the exchange otherwise.
+    environment: Nuget.org
     steps:
       - uses: actions/checkout@v4
 
@@ -23,15 +35,31 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # Stable on a v* tag (version = csproj VersionPrefix); prerelease otherwise.
+      - name: Compute version suffix
+        id: ver
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "suffix=" >> "$GITHUB_OUTPUT"
+          else
+            echo "suffix=preview.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          fi
 
-      # Pack regenerates SynoSharp.Api from the schema, then packs the two
-      # packable projects (SchemaGen + Tests are IsPackable=false).
-      - name: Pack
-        run: dotnet pack -c Release -o artifacts
+      # Exchange the OIDC token for a short-lived (1h) nuget.org API key.
+      - name: NuGet login (OIDC → temporary API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
 
-      - name: Push to GitHub Packages
-        run: >
-          dotnet nuget push "artifacts/*.nupkg"
-          --source "https://nuget.pkg.github.com/chrison-dev/index.json"
-          --api-key "${{ secrets.GITHUB_TOKEN }}"
-          --skip-duplicate --no-symbols
+      # Fallout Pack + Publish. GITHUB_PACKAGES_PAT authenticates the Fallout-build
+      # feed (build/ project restore); the push uses the short-lived nuget.org key.
+      - name: Publish (Fallout → nuget.org)
+        env:
+          GITHUB_PACKAGES_PAT: ${{ secrets.PACKAGES_PAT }}
+        run: |
+          ARGS=(Publish --nuget-api-key "${{ steps.login.outputs.NUGET_API_KEY }}")
+          if [[ -n "${{ steps.ver.outputs.suffix }}" ]]; then
+            ARGS+=(--version-suffix "${{ steps.ver.outputs.suffix }}")
+          fi
+          ./build.sh "${ARGS[@]}"

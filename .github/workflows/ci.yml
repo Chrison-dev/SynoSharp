@@ -6,9 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+# Build + test only. Publishing (prerelease on main, stable on v* tag) lives in
+# publish.yml and uses nuget.org Trusted Publishing (OIDC) — no packages: write here.
 permissions:
   contents: read
-  packages: write
 
 jobs:
   build:
@@ -20,22 +21,13 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      # Hand-written client (no codegen) — just build + test.
-      - name: Build
-        run: dotnet build -c Release
-
-      # Live DSM integration tests skip automatically without SYNOLOGY_* env.
-      - name: Test
-        run: dotnet test -c Release --no-build
-
-      # On every push to main, publish a PRERELEASE to GitHub Packages so other
-      # projects can reference the latest build (e.g. 0.1.0-preview.42). Stable
-      # versions are published from the publish.yml workflow on a v* tag.
-      - name: Publish prerelease
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          dotnet pack -c Release -o artifacts --version-suffix "preview.${{ github.run_number }}"
-          dotnet nuget push "artifacts/*.nupkg" \
-            --source "https://nuget.pkg.github.com/chrison-dev/index.json" \
-            --api-key "${{ secrets.GITHUB_TOKEN }}" \
-            --skip-duplicate --no-symbols
+      # Runs the Fallout build (Compile → Test). Hand-written client (no codegen);
+      # Test skips live DSM integration tests automatically without SYNOLOGY_* env.
+      #
+      # GITHUB_PACKAGES_PAT authenticates the Fallout-build package feed (nuget.config)
+      # so the build/ project can restore Fallout.*. PACKAGES_PAT is a PAT with
+      # read:packages on the Fallout-build org.
+      - name: Build & test (Fallout)
+        env:
+          GITHUB_PACKAGES_PAT: ${{ secrets.PACKAGES_PAT }}
+        run: ./build.sh Test
