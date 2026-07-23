@@ -24,8 +24,12 @@ this is a hand-written **read-API client** (now) + an **SSH-runner** for mutatio
 
 ## Build / use
 
+Built with [Fallout](https://github.com/Fallout-build/Fallout) (Chris's C#/.NET
+build system, a NUKE successor). Requires the .NET 10 SDK and `GITHUB_PACKAGES_PAT`
+(a PAT with `read:packages` on the Fallout-build org — restores `Fallout.*`, see `nuget.config`).
+
 ```bash
-dotnet build && dotnet test
+./build.sh              # default: Test (Compile + Test); ./build.sh Pack → Chrison.* nupkgs
 export SYNOLOGY_BASE_URL=https://nas:5001 SYNOLOGY_USER=… SYNOLOGY_PASSWORD=… SYNOLOGY_VERIFY_TLS=false
 synosharp discover     # JSON snapshot: model, serial, DSM version, shares, users
 synosharp ssh-check    # prove the SSH-runner: login + sudo-to-root + read-only `synoshare --enum`
@@ -38,8 +42,10 @@ direct root SSH, so the runner logs in as an admin user and `sudo -S` (password 
 stdin, never in the command line), running tools through `env PATH=/usr/syno/sbin:…`
 since sudo's `secure_path` excludes the syno dirs.
 
-Packages publish to GitHub Packages (chrison-dev) like the siblings: prerelease
-on push to `main`, stable on `v*` tag.
+Packages publish to **nuget.org** (public) under the `Chrison.*` prefix
+(`Chrison.SynoSharp`, `Chrison.SynoSharp.Cli`) via **Trusted Publishing** (OIDC — no
+stored key), like the siblings: prerelease on push to `main`, stable on `v*` tag.
+Assembly name/namespace stay `SynoSharp`, so `using SynoSharp;` is unchanged.
 
 ## Status
 

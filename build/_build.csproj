@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Fallout build pipeline for SynoSharp (ADR-0001: Chris's C#/.NET build
+       system, a NUKE successor). Restore/Compile/Test/Pack/Publish targets wrap
+       the native `dotnet` toolchain; run via ./build.sh / ./build.ps1 or directly
+       with `dotnet run` on this project (target as the arg). Fallout packages come
+       from the Fallout-build edge feed (see ../nuget.config); pinned for repro. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace></RootNamespace>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);CS0649;CS0169</NoWarn>
+    <!-- Inline Version="" pins below take effect (no central package management here). -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pinned to the set used across the homelab (matches Homelab/build). Bump deliberately. -->
+    <PackageReference Include="Fallout.Build" Version="2026.1.0-preview.5.gd84fad5cd7" />
+    <PackageReference Include="Fallout.Common" Version="2026.1.0-preview.5.gd84fad5cd7" />
+    <PackageReference Include="Fallout.Components" Version="2026.1.0-preview.5.gd84fad5cd7" />
+  </ItemGroup>
+
+</Project>

@@ -6,9 +6,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
+    <!-- Public nuget.org ID uses the reserved Chrison.* prefix; the invoked command
+         (ToolCommandName) stays `synosharp`, so usage is unchanged. -->
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>synosharp</ToolCommandName>
-    <PackageId>SynoSharp.Cli</PackageId>
+    <PackageId>Chrison.SynoSharp.Cli</PackageId>
     <VersionPrefix>0.1.0</VersionPrefix>
     <Description>CLI for SynoSharp — read and discover Synology DSM from the shell.</Description>
   </PropertyGroup>
