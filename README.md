@@ -1,9 +1,30 @@
 # SynoSharp
 
+[![NuGet](https://img.shields.io/nuget/v/Chrison.SynoSharp.svg)](https://www.nuget.org/packages/Chrison.SynoSharp/)
+[![Downloads](https://img.shields.io/nuget/dt/Chrison.SynoSharp.svg)](https://www.nuget.org/packages/Chrison.SynoSharp/)
+[![ci](https://github.com/Chrison-dev/SynoSharp/actions/workflows/ci.yml/badge.svg)](https://github.com/Chrison-dev/SynoSharp/actions/workflows/ci.yml)
+[![Built with Fallout](https://img.shields.io/badge/built%20with-Fallout-8A2BE2)](https://github.com/Fallout-build/Fallout)
+[![License: MIT](https://img.shields.io/github/license/Chrison-dev/SynoSharp.svg)](LICENSE)
+
 A C# client for **Synology DSM** IaC. Sibling to ProxmoxSharp/UnifiSharp — but
 **not code-generated**: Synology publishes no settings/deploy API schema, so per
-[ADR-0002](https://github.com/chrison-dev/Homelab/blob/main/docs/adr/ADR-0002-synosharp.md)
+[ADR-0002](https://github.com/Chrison-Homelab/Homelab/blob/main/docs/adr/ADR-0002-synosharp.md)
 this is a hand-written **read-API client** (now) + an **SSH-runner** for mutations (later).
+
+```sh
+dotnet add package Chrison.SynoSharp
+```
+
+```mermaid
+flowchart LR
+  APP["🧩 homelab engine / CLI"] -->|"read / discover"| WEB["🌐 DSM Web API<br/>SYNO.API.Auth → entry.cgi → SYNO.Core.*"]
+  APP -. "mutations (write phase)" .-> SSH["🔐 SSH-runner<br/>syno* CLI + synowebapi"]
+  WEB --> SNAP["📊 SynologySnapshot"]
+  SSH --> NAS["🗄️ DSM 7.1 · DS1813+"]
+  WEB --- NAS
+  classDef future fill:#f3f4f6,stroke:#9ca3af,color:#6b7280;
+  class SSH future;
+```
 
 ## Approach
 
