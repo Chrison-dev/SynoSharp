@@ -3,7 +3,7 @@
 [![NuGet](https://img.shields.io/nuget/v/Chrison.SynoSharp.svg)](https://www.nuget.org/packages/Chrison.SynoSharp/)
 [![Downloads](https://img.shields.io/nuget/dt/Chrison.SynoSharp.svg)](https://www.nuget.org/packages/Chrison.SynoSharp/)
 [![ci](https://github.com/Chrison-dev/SynoSharp/actions/workflows/ci.yml/badge.svg)](https://github.com/Chrison-dev/SynoSharp/actions/workflows/ci.yml)
-[![Built with Fallout](https://img.shields.io/badge/built%20with-Fallout-8A2BE2)](https://github.com/Fallout-build/Fallout)
+[![built with Fallout](https://img.shields.io/badge/built%20with-Fallout-F5C800?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiNGNUM4MDAiLz48ZyBmaWxsPSIjMTExIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIzLjEiLz48cGF0aCBkPSJNOS45OSA5LjAyQTMuNiAzLjYgMCAwIDEgMTQuMDEgOS4wMkwxOC40OSAyLjM4QTExLjYgMTEuNiAwIDAgMCA1LjUxIDIuMzhaTTE1LjU5IDExLjc1QTMuNiAzLjYgMCAwIDEgMTMuNTggMTUuMjRMMTcuMDkgMjIuNDNBMTEuNiAxMS42IDAgMCAwIDIzLjU3IDExLjE5Wk0xMC40MiAxNS4yNEEzLjYgMy42IDAgMCAxIDguNDEgMTEuNzVMMC40MyAxMS4xOUExMS42IDExLjYgMCAwIDAgNi45MSAyMi40M1oiLz48L2c%2BPC9zdmc%2B)](https://github.com/Fallout-build/Fallout)
 [![License: MIT](https://img.shields.io/github/license/Chrison-dev/SynoSharp.svg)](LICENSE)
 
 A C# client for **Synology DSM** IaC. Sibling to ProxmoxSharp/UnifiSharp — but
