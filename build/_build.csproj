@@ -4,7 +4,8 @@
        system, a NUKE successor). Restore/Compile/Test/Pack/Publish targets wrap
        the native `dotnet` toolchain; run via ./build.sh / ./build.ps1 or directly
        with `dotnet run` on this project (target as the arg). Fallout packages come
-       from the Fallout-build edge feed (see ../nuget.config); pinned for repro. -->
+       from nuget.org (10.4.0 stable; the 2026.1.0-preview edge pin was pulled from
+       the Fallout-build feed, same move as ProxmoxSharp#25); pinned for repro. -->
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -20,9 +21,9 @@
 
   <ItemGroup>
     <!-- Pinned to the set used across the homelab (matches Homelab/build). Bump deliberately. -->
-    <PackageReference Include="Fallout.Build" Version="2026.1.0-preview.5.gd84fad5cd7" />
-    <PackageReference Include="Fallout.Common" Version="2026.1.0-preview.5.gd84fad5cd7" />
-    <PackageReference Include="Fallout.Components" Version="2026.1.0-preview.5.gd84fad5cd7" />
+    <PackageReference Include="Fallout.Build" Version="10.4.0" />
+    <PackageReference Include="Fallout.Common" Version="10.4.0" />
+    <PackageReference Include="Fallout.Components" Version="10.4.0" />
   </ItemGroup>
 
 </Project>
