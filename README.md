@@ -46,8 +46,8 @@ flowchart LR
 ## Build / use
 
 Built with [Fallout](https://github.com/Fallout-build/Fallout) (Chris's C#/.NET
-build system, a NUKE successor). Requires the .NET 10 SDK and `GITHUB_PACKAGES_PAT`
-(a PAT with `read:packages` on the Fallout-build org — restores `Fallout.*`, see `nuget.config`).
+build system, a NUKE successor). Requires the .NET 10 SDK; everything,
+including `Fallout.*`, restores from nuget.org with no credentials.
 
 ```bash
 ./build.sh              # default: Test (Compile + Test); ./build.sh Pack → Chrison.* nupkgs

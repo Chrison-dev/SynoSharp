@@ -23,11 +23,5 @@ jobs:
 
       # Runs the Fallout build (Compile → Test). Hand-written client (no codegen);
       # Test skips live DSM integration tests automatically without SYNOLOGY_* env.
-      #
-      # GITHUB_PACKAGES_PAT authenticates the Fallout-build package feed (nuget.config)
-      # so the build/ project can restore Fallout.*. PACKAGES_PAT is a PAT with
-      # read:packages on the Fallout-build org.
       - name: Build & test (Fallout)
-        env:
-          GITHUB_PACKAGES_PAT: ${{ secrets.PACKAGES_PAT }}
         run: ./build.sh Test
